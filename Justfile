@@ -1,4 +1,4 @@
-image_name := "petalinux:2023.2"
+image_name := "petalinux:2024.1"
 
 # Check that the given environment variable is defined
 env-check-var var:
