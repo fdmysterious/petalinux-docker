@@ -1,7 +1,7 @@
 FROM ubuntu:22.04
 
 ENV DEBIAN_FRONTEND=noninteractive
-ARG PTLNX_INSTALLER=petalinux-v2023.2-10121855-installer.run
+ARG PTLNX_INSTALLER=petalinux-v2024.1-05202009-installer.run
 
 # Environment
 # Disable user interaction with debian commands.
@@ -119,12 +119,9 @@ WORKDIR /home/petalinux
 COPY --chown=petalinux:users ./$PTLNX_INSTALLER .
 RUN chmod +x ./$PTLNX_INSTALLER
 
-COPY --chown=petalinux:users ./patch_petalinux.sh .
-RUN chmod +x ./patch_petalinux.sh
 
 # Patch and run installer
-RUN ./patch_petalinux.sh ./$PTLNX_INSTALLER
-RUN ./$PTLNX_INSTALLER -p aarch64 -d /opt/petalinux
+RUN ./$PTLNX_INSTALLER -y -p aarch64 -d /opt/petalinux
 
 USER root
 
@@ -147,7 +144,7 @@ RUN chpasswd <<<"petalinux:petalinux"
 USER petalinux
 
 WORKDIR /home/petalinux
-RUN rm $PTLNX_INSTALLER patch_petalinux.sh petalinux_installation_log
+RUN rm $PTLNX_INSTALLER
 
 # Create cache folders for yocto
 RUN mkdir -p cache/{downloads,sstate-cache}
