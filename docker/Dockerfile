@@ -1,4 +1,4 @@
-FROM ubuntu:22.04
+FROM ubuntu:22.04 AS base_env
 
 ENV DEBIAN_FRONTEND=noninteractive
 ARG PTLNX_INSTALLER=petalinux-v2023.2-10121855-installer.run
@@ -65,62 +65,32 @@ RUN apt-get install -y \
    lsb-release \
    libtinfo5
 
-# Removed dependencies for now:
-#zlib1g:i386\
-#cpp-11=11.3.0-1ubuntu1~22.04  \
-#libselinux1\
-#libstdc++\
+FROM base_env AS install_stage
 
-   #RUN apt-get install -y\
-   #                iproute2\
-   #                gcc\
-   #                g++\
-   #                zlib1g\
-   #                zlib1g:i386\
-   #                zlib1g-dev\
-#                libssl-dev\
-#                flex\
-#                bison\
-#                libselinux1\
-#                autoconf\
-#                libtool\
-#                texinfo\
-#                gcc-multilib\
-#                build-essential\
-#                screen\
-#                pax\
-#                gawk\
-#                python3\
-#                python3-pexpect\
-#                python3-git\
-#                python3-jinja2\
-#                xz-utils\
-#                debianutils\
-#                iputils-ping\
-#                pylint3\
-#                cpio\
-#                xterm\
-#                libncurses5-dev\
-#                net-tools
+# Add installation user as installer refuse to install as root...
+RUN useradd -s /bin/bash -g users installer
 
-RUN apt install -y vim
-
-# Create petalinux user and directory
+# Prepare installation directory
 RUN mkdir -p /opt/petalinux
-RUN useradd -s /bin/bash -g users  -m petalinux
-RUN chown petalinux:users /opt/petalinux
+RUN chown installer:users /opt/petalinux
 RUN chmod 755 /opt/petalinux
 
-# Go to petalinux home directory
-USER petalinux
-WORKDIR /home/petalinux
+RUN mkdir -p /workspace
+RUN chmod 755 /workspace
+
+WORKDIR /workspace
 
 # Copy required files
-COPY --chown=petalinux:users ./$PTLNX_INSTALLER .
+COPY ./$PTLNX_INSTALLER .
 RUN chmod +x ./$PTLNX_INSTALLER
 
-COPY --chown=petalinux:users ./patch_petalinux.sh .
+COPY ./patch_petalinux.sh .
 RUN chmod +x ./patch_petalinux.sh
+
+RUN chown -R installer:users /workspace
+
+USER installer
+WORKDIR /workspace
 
 # Patch and run installer
 RUN ./patch_petalinux.sh ./$PTLNX_INSTALLER
@@ -128,33 +98,23 @@ RUN ./$PTLNX_INSTALLER -p aarch64 -d /opt/petalinux
 
 USER root
 
-# Install tftp
-RUN apt install -y xinetd tftpd tftp
-COPY ./tftp /etc/xinetd.d/tftp
-RUN mkdir -p /tftpboot
-RUN chown -R nobody /tftpboot
-RUN chmod -R 777 /tftpboot
+# Change user ownership for installation folder
+RUN chown -R root:root /opt/petalinux
 
+#######
 
-#RUN ./update_esdk.sh
-#RUN rm -r esdk.sh.split update_esdk.sh
+FROM base_env AS final
 
-# Install sudo, give sudo user privileges
-RUN apt install sudo
-RUN usermod -aG sudo petalinux
-RUN chpasswd <<<"petalinux:petalinux"
+RUN apt install -y vim
+COPY --from=install_stage /opt/petalinux /opt/petalinux
 
-USER petalinux
+COPY ./entrypoint.sh /opt/entrypoint.sh
+RUN chmod +x /opt/entrypoint.sh
 
-WORKDIR /home/petalinux
-RUN rm $PTLNX_INSTALLER patch_petalinux.sh petalinux_installation_log
+RUN mkdir -p /yocto/dl /yocto/ss
+RUN chmod 777 /yocto/dl /yocto/ss
 
-# Create cache folders for yocto
-RUN mkdir -p cache/{downloads,sstate-cache}
-RUN mkdir -p outputs
-RUN chmod 755 outputs
+# Customize shell prompt
+RUN echo "export PS1='\[\e[0m\][\[\e[34m\]\w\[\e[0m\]] > '" >> /etc/bash.bashrc
 
-# Source the petalinux stuff in the .bashrc
-RUN echo "export DL_DIR=$HOME/cache/downloads"        >> ~/.bashrc
-RUN echo "export SSTATE_DIR=$HOME/cache/sstate-cache" >> ~/.bashrc
-RUN echo "source /opt/petalinux/settings.sh"          >> ~/.bashrc
+ENTRYPOINT ["/opt/entrypoint.sh"]
