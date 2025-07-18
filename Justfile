@@ -1,5 +1,8 @@
 image_name := "petalinux:2024.1"
 
+uid := `id -u`
+gid := `id -g`
+
 # Check that the given environment variable is defined
 env-check-var var:
    @{{ if env_var_or_default(var, "") == "" {"echo 'Please define the " + var + " environment variable' && exit 1"} else {""} }}
@@ -13,7 +16,7 @@ env-ensure:
 
 # Build the docker image
 image-build:
-   docker buildx build -t {{image_name}} --load docker
+   docker buildx build --progress=plain -t {{image_name}} --load docker
 
 # Check that the docker image exists
 image-check:
@@ -23,5 +26,8 @@ image-check:
 image-ensure:
    {{ if `just image-check` != '1' {"just image-build"} else {""} }}
 
-shell: env-ensure image-ensure
-   docker run --rm -it -v ./project:/project -v ./bsp:/bsp -v {{env_var('SSTATE_DIR')}}:/home/petalinux/cache/sstate-cache -v {{env_var('DL_DIR')}}:/home/petalinux/cache/downloads {{image_name}} bash
+exec *args: env-ensure
+   docker run --user {{uid}}:{{gid}} -w /project --rm -it -v ./project:/project -v ./bsp:/bsp -v {{env_var('SSTATE_DIR')}}:/yocto/ss -v {{env_var('DL_DIR')}}:/yocto/dl {{image_name}} {{args}}
+
+shell:
+   @just exec bash
