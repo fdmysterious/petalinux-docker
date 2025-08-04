@@ -27,7 +27,8 @@ image-ensure:
    {{ if `just image-check` != '1' {"just image-build"} else {""} }}
 
 exec *args: env-ensure
-   docker run --user {{uid}}:{{gid}} -w /project --rm -it -v ./project:/project -v ./bsp:/bsp -v {{env_var('SSTATE_DIR')}}:/yocto/ss -v {{env_var('DL_DIR')}}:/yocto/dl {{image_name}} {{args}}
+   # docker run --user {{uid}}:{{gid}} -w /project --rm -it -v ./project:/project -v ./bsp:/bsp -v {{env_var('SSTATE_DIR')}}:/yocto/ss -v {{env_var('DL_DIR')}}:/yocto/dl {{image_name}} {{args}}
+   docker run -e HOST_GID={{gid}} -e HOST_UID={{uid}} -w /project --rm -it -v ./project:/project -v ./bsp:/bsp -v {{env_var('SSTATE_DIR')}}:/yocto/ss -v {{env_var('DL_DIR')}}:/yocto/dl {{image_name}} {{args}}
 
 shell:
    @just exec bash
