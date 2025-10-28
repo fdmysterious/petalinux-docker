@@ -111,6 +111,9 @@ COPY --from=install_stage /opt/petalinux /opt/petalinux
 COPY ./entrypoint.sh /opt/entrypoint.sh
 RUN chmod +x /opt/entrypoint.sh
 
+COPY ./user_entrypoint.sh /opt/user_entrypoint.sh
+RUN chmod +x /opt/user_entrypoint.sh
+
 RUN mkdir -p /yocto/dl /yocto/ss
 RUN chmod 777 /yocto/dl /yocto/ss
 

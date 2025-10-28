@@ -1,9 +1,6 @@
 #!/bin/bash
 
-export SHELL="/bin/bash"
-export DL_DIR=/yocto/dl
-export SSTATE_DIR=/yocto/ss
+groupadd --gid $HOST_GID builder
+useradd --shell /bin/bash --gid $HOST_GID --uid $HOST_UID builder
 
-source /opt/petalinux/settings.sh /opt/petalinux
-
-exec $@
+su -c "source /opt/user_entrypoint.sh $@" builder
