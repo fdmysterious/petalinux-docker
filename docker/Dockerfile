@@ -1,7 +1,7 @@
 FROM ubuntu:22.04 AS base_env
 
 ENV DEBIAN_FRONTEND=noninteractive
-ARG PTLNX_INSTALLER=petalinux-v2024.2-11062026-installer.run
+ARG PTLNX_INSTALLER=petalinux-v2025.1-05180714-installer.run
 
 # Environment
 # Disable user interaction with debian commands.
