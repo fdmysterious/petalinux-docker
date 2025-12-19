@@ -11,4 +11,4 @@
 # See https://stackoverflow.com/questions/1030787/multiline-search-replace-with-perl
 
 # Bypass the accept_license function by replacing it with a dummy function
-perl -i -pe "BEGIN{undef $/;} s/function accept_license {.*?^}$/function accept_license {\n    echo \"Automatically accepting licenses !!!\"\n}\n/gms" "$1"
+perl -i -pe 'BEGIN{undef $/;} s/function accept_license \{.*?^\}/function accept_license {\n    echo "Automatically accepting licenses !!!"\n}/gms' "$1"

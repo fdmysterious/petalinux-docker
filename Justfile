@@ -1,4 +1,4 @@
-image_name := "petalinux:2023.2"
+image_name := "petalinux:2020.2"
 
 uid := `id -u`
 gid := `id -g`

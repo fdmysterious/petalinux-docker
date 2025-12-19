@@ -1,7 +1,7 @@
-FROM ubuntu:22.04 AS base_env
+FROM ubuntu:18.04 AS base_env
 
 ENV DEBIAN_FRONTEND=noninteractive
-ARG PTLNX_INSTALLER=petalinux-v2023.2-10121855-installer.run
+ARG PTLNX_INSTALLER=petalinux-v2020.2-final-installer.run
 
 # Environment
 # Disable user interaction with debian commands.
@@ -15,7 +15,7 @@ RUN dpkg-reconfigure dash
 
 # Install dependencies
 # → Architecture i386 for zlib1g:i386 package
-#RUN dpkg --add-architecture i386 && apt-get update -y
+RUN dpkg --add-architecture i386 && apt-get update -y
 RUN apt-get update -y
 
 # → Install apt-utils needed to configure the libc6:i386 package
@@ -37,24 +37,25 @@ RUN apt-get install -y \
    gcc \
    net-tools\
    libncurses5-dev \
+   libncurses5-dev:i386 \
    openssl\
    xterm\
    autoconf \
    libtool\
    texinfo\
-   zlib1g\
-   zlib1g-dev\
+   zlib1g:i386\
+   zlib1g-dev:i386\
+   libc6:i386\
+   libc6-dev:i386\
    gcc-multilib\
    build-essential\
    automake \
    screen\
    g++\
    xz-utils\
-   gcc-11\
    patch\
    python3-jinja2\
    diffutils\
-   debianutils\
    iputils-ping\
    python3\
    cpio\
@@ -63,12 +64,12 @@ RUN apt-get install -y \
    rsync \
    bc \
    lsb-release \
+   device-tree-compiler\
    libtinfo5
 
 FROM base_env AS install_stage
 
-# Add installation user as installer refuse to install as root...
-RUN useradd -s /bin/bash -g users installer
+RUN useradd -m -s /bin/bash installer
 
 # Prepare installation directory
 RUN mkdir -p /opt/petalinux
@@ -108,6 +109,22 @@ FROM base_env AS final
 RUN apt install -y vim
 COPY --from=install_stage /opt/petalinux /opt/petalinux
 
+## Ensure standard system binaries are available in PATH
+ENV PATH="/usr/sbin:/usr/bin:/sbin:/bin:${PATH}"
+
+## Install `tini` (as PID 1) to handle OS signals properly
+ENV TINI_VERSION=v0.19.0
+## Download the static tini binary into the image
+ADD https://github.com/krallin/tini/releases/download/${TINI_VERSION}/tini /usr/bin/tini
+## Make tini executable so it can be used as entrypoint
+RUN chmod +x /usr/bin/tini
+
+## Install `gosu` to drop privileges and run as the runtime user (`builder`).
+RUN apt-get install -y --no-install-recommends gosu
+
+## Clean up apt lists to reduce image size
+RUN rm -rf /var/lib/apt/lists/*
+
 COPY ./entrypoint.sh /opt/entrypoint.sh
 RUN chmod +x /opt/entrypoint.sh
 
@@ -120,4 +137,4 @@ RUN chmod 777 /yocto/dl /yocto/ss
 # Customize shell prompt
 RUN echo "export PS1='\[\e[0m\][\[\e[34m\]\w\[\e[0m\]] > '" >> /etc/bash.bashrc
 
-ENTRYPOINT ["/opt/entrypoint.sh"]
+ENTRYPOINT ["/usr/bin/tini", "--", "/opt/entrypoint.sh"]
